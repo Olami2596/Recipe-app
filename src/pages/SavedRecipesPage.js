@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, deleteDoc, doc, orderBy } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 
 function SavedRecipesPage() {
@@ -11,7 +11,11 @@ function SavedRecipesPage() {
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        const q = query(collection(db, 'recipes'), where('userId', '==', user.uid));
+        const q = query(
+          collection(db, 'recipes'),
+          where('userId', '==', user.uid),
+          orderBy('createdAt', 'desc')  // Order by creation time in descending order
+        );
         const querySnapshot = await getDocs(q);
         const fetchedRecipes = querySnapshot.docs.map(doc => ({
           id: doc.id,
@@ -23,17 +27,20 @@ function SavedRecipesPage() {
         alert('Failed to fetch recipes. Please try again.');
       }
     };
-
+  
     fetchRecipes();
   }, [user.uid]);
 
+
   const deleteRecipe = async (id) => {
-    try {
-      await deleteDoc(doc(db, 'recipes', id));
-      setRecipes(recipes.filter(recipe => recipe.id !== id));
-    } catch (error) {
-      console.error('Error deleting recipe:', error);
-      alert('Failed to delete recipe. Please try again.');
+    if (window.confirm('Are you sure you want to delete this recipe?')) {
+      try {
+        await deleteDoc(doc(db, 'recipes', id));
+        setRecipes(recipes.filter(recipe => recipe.id !== id));
+      } catch (error) {
+        console.error('Error deleting recipe:', error);
+        alert('Failed to delete recipe. Please try again.');
+      }
     }
   };
 

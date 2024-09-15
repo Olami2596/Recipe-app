@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, orderBy } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { saveAs } from 'file-saver';
@@ -20,7 +20,11 @@ function SavedShoppingListsPage() {
 
   const fetchSavedLists = async () => {
     try {
-      const q = query(collection(db, 'shoppingLists'), where('userId', '==', user.uid));
+      const q = query(
+        collection(db, 'shoppingLists'),
+        where('userId', '==', user.uid),
+        orderBy('createdAt', 'desc') // Add this line to sort by createdAt in descending order
+      );
       const querySnapshot = await getDocs(q);
       const lists = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setSavedLists(lists);

@@ -1,88 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { db } from '../firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { useAuth } from '../contexts/AuthContext';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../firebase';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { db, storage } from "../firebase";
+import { collection, addDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
 
-function EditRecipePage() {
-  const { id } = useParams();
+function ManualCreateRecipePage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [recipe, setRecipe] = useState({
-    title: '',
-    image: '',
-    ingredients: [''],
-    instructions: [''],
+    title: "",
+    ingredients: [""],
+    instructions: [""],
     readyInMinutes: 0,
-    servings: 1
+    servings: 1,
   });
   const [imageFile, setImageFile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [imageUrl, setImageUrl] = useState("");
 
-  const { user } = useAuth();
-
-  useEffect(() => {
-    const fetchRecipe = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const docRef = doc(db, 'recipes', id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists() && docSnap.data().userId === user.uid) {
-          setRecipe(docSnap.data());
-        } else {
-          setError('Recipe not found or you do not have permission to edit it.');
-          navigate('/saved-recipes');
-        }
-      } catch (error) {
-        console.error('Error fetching recipe:', error);
-        setError('Failed to fetch recipe. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRecipe();
-  }, [id, navigate, user.uid]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setRecipe(prevRecipe => ({
+    setRecipe((prevRecipe) => ({
       ...prevRecipe,
-      [name]: value
-    }));
-  };
-
-  const handleIngredientChange = (index, value) => {
-    setRecipe(prevRecipe => {
-      const newIngredients = [...prevRecipe.ingredients];
-      newIngredients[index] = value;
-      return { ...prevRecipe, ingredients: newIngredients };
-    });
-  };
-
-  const handleInstructionChange = (index, value) => {
-    setRecipe(prevRecipe => {
-      const newInstructions = [...prevRecipe.instructions];
-      newInstructions[index] = value;
-      return { ...prevRecipe, instructions: newInstructions };
-    });
-  };
-
-  const addIngredient = () => {
-    setRecipe(prevRecipe => ({
-      ...prevRecipe,
-      ingredients: [...prevRecipe.ingredients, '']
-    }));
-  };
-
-  const addInstruction = () => {
-    setRecipe(prevRecipe => ({
-      ...prevRecipe,
-      instructions: [...prevRecipe.instructions, '']
+      [name]: value,
     }));
   };
 
@@ -92,77 +34,123 @@ function EditRecipePage() {
     }
   };
 
+  const handleIngredientChange = (index, value) => {
+    setRecipe((prevRecipe) => {
+      const newIngredients = [...prevRecipe.ingredients];
+      newIngredients[index] = value;
+      return { ...prevRecipe, ingredients: newIngredients };
+    });
+  };
+
+  const handleInstructionChange = (index, value) => {
+    setRecipe((prevRecipe) => {
+      const newInstructions = [...prevRecipe.instructions];
+      newInstructions[index] = value;
+      return { ...prevRecipe, instructions: newInstructions };
+    });
+  };
+
+  const addIngredient = () => {
+    setRecipe((prevRecipe) => ({
+      ...prevRecipe,
+      ingredients: [...prevRecipe.ingredients, ""],
+    }));
+  };
+
+  const addInstruction = () => {
+    setRecipe((prevRecipe) => ({
+      ...prevRecipe,
+      instructions: [...prevRecipe.instructions, ""],
+    }));
+  };
+
   const handleImageUpload = async () => {
     if (imageFile) {
       const imageRef = ref(storage, `recipeImages/${uuidv4()}`);
       try {
         const snapshot = await uploadBytes(imageRef, imageFile);
         const url = await getDownloadURL(snapshot.ref);
+        setImageUrl(url);
         return url;
       } catch (error) {
         console.error("Error uploading image: ", error);
-        setError(`Failed to upload image. Error: ${error.message}`);
+        if (error.code === 'storage/unauthorized') {
+          alert("Error: Unauthorized access to Firebase Storage. Check your security rules.");
+        } else {
+          alert(`Failed to upload image. Error: ${error.message}`);
+        }
         return null;
       }
     }
-    return recipe.image;
+    return null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const imageUrl = await handleImageUpload();
-      const docRef = doc(db, 'recipes', id);
-      await updateDoc(docRef, { ...recipe, image: imageUrl });
-      navigate('/saved-recipes');
+      let imageUrl = null;
+      if (imageFile) {
+        imageUrl = await handleImageUpload();
+      }
+      
+      const docRef = await addDoc(collection(db, "recipes"), {
+        ...recipe,
+        image: imageUrl,
+        userId: user.uid,
+        createdAt: new Date(),
+      });
+      console.log("Document written with ID: ", docRef.id);
+      
+      // Clear the extracted text from localStorage
+      localStorage.removeItem('extractedText');
+      
+      navigate("/saved-recipes");
     } catch (error) {
-      console.error('Error updating document: ', error);
-      setError('Failed to update recipe. Please try again.');
+      console.error("Error adding document: ", error);
+      alert(`Failed to create recipe. Error: ${error.message}`);
     }
   };
 
   const removeIngredient = (index) => {
-    setRecipe(prevRecipe => ({
+    setRecipe((prevRecipe) => ({
       ...prevRecipe,
-      ingredients: prevRecipe.ingredients.filter((_, i) => i !== index)
+      ingredients: prevRecipe.ingredients.filter((_, i) => i !== index),
     }));
   };
 
   const removeInstruction = (index) => {
-    setRecipe(prevRecipe => ({
+    setRecipe((prevRecipe) => ({
       ...prevRecipe,
-      instructions: prevRecipe.instructions.filter((_, i) => i !== index)
+      instructions: prevRecipe.instructions.filter((_, i) => i !== index),
     }));
   };
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>{error}</p>;
-
   return (
     <div>
-      <h1>Edit Recipe</h1>
+      <h1>Create New Recipe Manually</h1>
       <form onSubmit={handleSubmit}>
+        {/* Form fields */}
         <div>
           <label htmlFor="title">Title:</label>
           <input
             type="text"
             id="title"
             name="title"
-            value={recipe.title || ''}
+            value={recipe.title}
             onChange={handleChange}
             required
           />
         </div>
         <div>
-          <label htmlFor="image">Image:</label>
-          {recipe.image && <img src={recipe.image} alt="Recipe" style={{maxWidth: '200px', maxHeight: '200px'}} />}
+          <label htmlFor="image">Upload Image:</label>
           <input
             type="file"
             id="image"
             name="image"
-            onChange={handleImageChange}
             accept="image/*"
+            onChange={handleImageChange}
           />
+          {imageUrl && <img src={imageUrl} alt="Uploaded recipe" height="200px" width="200px" />}
         </div>
         <div>
           <label>Ingredients:</label>
@@ -170,28 +158,32 @@ function EditRecipePage() {
             <div key={index}>
               <input
                 type="text"
-                value={ingredient || ''}
+                value={ingredient}
                 onChange={(e) => handleIngredientChange(index, e.target.value)}
                 required
               />
               <button type="button" onClick={() => removeIngredient(index)}>Remove</button>
             </div>
           ))}
-          <button type="button" onClick={addIngredient}>Add Ingredient</button>
+          <button type="button" onClick={addIngredient}>
+            Add Ingredient
+          </button>
         </div>
         <div>
           <label>Instructions:</label>
           {recipe.instructions.map((instruction, index) => (
             <div key={index}>
               <textarea
-                value={instruction || ''}
+                value={instruction}
                 onChange={(e) => handleInstructionChange(index, e.target.value)}
                 required
               />
               <button type="button" onClick={() => removeInstruction(index)}>Remove</button>
             </div>
           ))}
-          <button type="button" onClick={addInstruction}>Add Instruction</button>
+          <button type="button" onClick={addInstruction}>
+            Add Instruction
+          </button>
         </div>
         <div>
           <label htmlFor="readyInMinutes">Ready in (minutes):</label>
@@ -199,7 +191,7 @@ function EditRecipePage() {
             type="number"
             id="readyInMinutes"
             name="readyInMinutes"
-            value={recipe.readyInMinutes || 0}
+            value={recipe.readyInMinutes}
             onChange={handleChange}
             required
           />
@@ -210,15 +202,15 @@ function EditRecipePage() {
             type="number"
             id="servings"
             name="servings"
-            value={recipe.servings || 1}
+            value={recipe.servings}
             onChange={handleChange}
             required
           />
         </div>
-        <button type="submit">Update Recipe</button>
+        <button type="submit">Create Recipe</button>
       </form>
     </div>
   );
 }
 
-export default EditRecipePage;
+export default ManualCreateRecipePage;

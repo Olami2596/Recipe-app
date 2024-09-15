@@ -8,6 +8,9 @@ import EditRecipePage from './pages/EditRecipePage';
 import ShoppingListPage from './pages/ShoppingListPage';
 import SavedRecipesPage from './pages/SavedRecipesPage';
 import SavedShoppingListsPage from './pages/SavedShoppingListsPage';
+import ManualCreateRecipePage from './pages/ManualCreateRecipePage';
+import TakeRecipePicturePage from './pages/TakeRecipePicturePage';
+import ExtractedTextRecipePage from './pages/ExtractedTextRecipePage';
 import LoginPage from './pages/LoginPage';
 import './App.css';
 import { SearchProvider } from './contexts/SearchContext';
@@ -41,6 +44,9 @@ function App() {
                 <Route path="/saved-recipes" element={<PrivateRoute><SavedRecipesPage /></PrivateRoute>} />
                 <Route path="/shopping-list" element={<PrivateRoute><ShoppingListPage /></PrivateRoute>} />
                 <Route path="/saved-shopping-lists" element={<PrivateRoute><SavedShoppingListsPage /></PrivateRoute>} />
+                <Route path="/create-recipe/manual" element={<PrivateRoute><ManualCreateRecipePage /></PrivateRoute>} />
+                <Route path="/take-recipe-picture" element={<PrivateRoute><TakeRecipePicturePage /></PrivateRoute>} />
+                <Route path="/create-recipe/extracted-text" element={<PrivateRoute><ExtractedTextRecipePage /></PrivateRoute>} />
               </Routes>
             </div>
           </ShoppingListProvider>

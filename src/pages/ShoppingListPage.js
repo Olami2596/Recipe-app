@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useShoppingList } from '../contexts/ShoppingListContext';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { saveAs } from 'file-saver';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell } from 'docx';
 import * as XLSX from 'xlsx';
@@ -23,8 +23,13 @@ function ShoppingListPage() {
     favoriteList,
     setFavoriteList,
     fetchLists,
-    updateLists
+    updateLists,
+    saveFavoriteList,
+    fetchFavoriteList,
+    fetchAllLists
   } = useShoppingList();
+
+  const navigate = useNavigate();
 
   const fetchRecipes = useCallback(async () => {
     try {
@@ -39,8 +44,12 @@ function ShoppingListPage() {
 
   useEffect(() => {
     fetchRecipes();
-    fetchLists();
-  }, [fetchRecipes, fetchLists]);
+    fetchAllLists();
+  }, [fetchRecipes, fetchAllLists]);
+
+  useEffect(() => {
+    updateLists();
+  }, [selectedRecipes, ingredientsList, shoppingList, favoriteList, updateLists]);
 
   const generateIngredientsList = useCallback(() => {
     const ingredients = selectedRecipes.flatMap(recipeId => {
@@ -54,10 +63,6 @@ function ShoppingListPage() {
   useEffect(() => {
     generateIngredientsList();
   }, [selectedRecipes, generateIngredientsList]);
-
-  useEffect(() => {
-    updateLists();
-  }, [selectedRecipes, ingredientsList, shoppingList, favoriteList, updateLists]);
 
   const handleRecipeSelection = (recipeId) => {
     setSelectedRecipes(prev => 
@@ -94,12 +99,13 @@ function ShoppingListPage() {
     });
   };
 
-  const toggleFavorite = (item) => {
-    setFavoriteList(prev => 
-      prev.includes(item)
-        ? prev.filter(i => i !== item)
-        : [...prev, item]
-    );
+  const toggleFavorite = async (item) => {
+    const newList = favoriteList.includes(item)
+      ? favoriteList.filter(i => i !== item)
+      : [...favoriteList, item];
+    
+    setFavoriteList(newList);
+    await saveFavoriteList(newList);
   };
 
   const exportToDOCX = () => {
@@ -179,18 +185,21 @@ function ShoppingListPage() {
     if (window.confirm("Are you sure you want to clear the ingredients list? This will unselect all recipes.")) {
       setSelectedRecipes([]);
       setIngredientsList([]);
+      updateLists();
     }
   };
-
+  
   const clearShoppingList = () => {
     if (window.confirm("Are you sure you want to clear the shopping list?")) {
       setShoppingList([]);
+      updateLists();
     }
   };
-
+  
   const clearFavoriteList = () => {
     if (window.confirm("Are you sure you want to clear the favorite list?")) {
       setFavoriteList([]);
+      updateLists();
     }
   };
 
@@ -255,7 +264,7 @@ function ShoppingListPage() {
         </div>
       )}
 
-      <Link to="/saved-shopping-lists">View Saved Shopping Lists</Link>
+      <button onClick={() => navigate('/saved-shopping-lists')}>View Saved Shopping Lists</button>
 
       <h2>Favorite Items:</h2>
       <button onClick={clearFavoriteList}>Clear Favorite List</button>

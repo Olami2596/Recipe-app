@@ -39,7 +39,7 @@ const upload = multer({ storage: storage });
 
 // Initialize Google Cloud Vision client
 const client = new vision.ImageAnnotatorClient({
-  keyFilename: path.join(__dirname, '..', 'recipe-app-56ff6-85b597ce82f9.json')
+  keyFilename: path.join(__dirname, '..', 'credentials.json')
 });
 
 function parseRecipe(text) {

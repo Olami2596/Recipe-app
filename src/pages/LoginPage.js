@@ -17,7 +17,7 @@ function LoginPage() {
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
-      navigate('/');
+      navigate('/saved-recipes');
     } catch (error) {
       console.error('Authentication error:', error);
       alert(error.message);

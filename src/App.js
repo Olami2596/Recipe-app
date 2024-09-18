@@ -27,7 +27,6 @@ function AppContent() {
   const handleLogout = async () => {
     try {
       await logout();
-      // No need to use navigate here, as the AuthProvider will handle redirection
     } catch (error) {
       console.error('Failed to log out', error);
     }

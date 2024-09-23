@@ -4,7 +4,10 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const vision = require('@google-cloud/vision');
-const admin = require('firebase-admin');
+const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
+const xlsx = require('xlsx');
+const { PDFDocument } = require('pdf-lib');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -28,19 +31,33 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// Parse the JSON string from the environment variable
-// const credentialsPath = process.env.REACT_APP_GOOGLE_CLOUD_CREDENTIALS;
-// const serviceAccount = JSON.parse(credentialsPath);
-// const serviceAccount = JSON.parse(fs.readFileSync(path.resolve(credentialsPath), 'utf8'));
-
-// admin.initializeApp({
-//   credential: admin.credential.cert(serviceAccount)
-// });
-
 // Initialize Google Cloud Vision client
 const client = new vision.ImageAnnotatorClient({
   keyFilename: path.join(__dirname, '..', 'credentials.json')
 });
+
+// Utility function to extract text from PDF
+async function extractTextFromPdf(filePath) {
+  const buffer = fs.readFileSync(filePath);
+  const data = await pdfParse(buffer);
+  return data.text;
+}
+
+// Utility function to extract text from DOCX
+async function extractTextFromDocx(filePath) {
+  const buffer = fs.readFileSync(filePath);
+  const result = await mammoth.extractRawText({ buffer });
+  return result.value;
+}
+
+// Utility function to extract data from CSV or Excel
+function extractDataFromCsvOrExcel(filePath) {
+  const workbook = xlsx.readFile(filePath);
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const data = xlsx.utils.sheet_to_csv(sheet);
+  return data; // Returning CSV data as text
+}
 
 function parseRecipe(text) {
   const lines = text.split('\n').filter(line => line.trim() !== '');
@@ -62,18 +79,17 @@ function parseRecipe(text) {
       continue;
     }
 
-switch (currentSection) {
-  case 'title':
-    recipe.title += (recipe.title ? ' ' : '') + line;
-    break;
-  case 'ingredients':
-    recipe.ingredients.push(line);
-    break;
-  case 'instructions':
-    recipe.instructions.push(line);
-    break;
-  default:
-    // Handle unexpected section or log a warning
+    switch (currentSection) {
+      case 'title':
+        recipe.title += (recipe.title ? ' ' : '') + line;
+        break;
+      case 'ingredients':
+        recipe.ingredients.push(line);
+        break;
+      case 'instructions':
+        recipe.instructions.push(line);
+        break;
+      default:
         console.warn(`Unexpected section: ${currentSection}`);
     }
   }
@@ -117,7 +133,42 @@ app.post('/api/extract-text', upload.single('image'), async (req, res) => {
   }
 });
 
+app.post('/api/extract-recipe', upload.single('file'), async (req, res) => {
+  const file = req.file;
+  if (!file) {
+    return res.status(400).send('No file uploaded');
+  }
+
+  try {
+    let extractedTextFile = '';
+    const fileType = file.mimetype;
+
+    if (fileType === 'application/pdf') {
+      // First try extracting with pdf-parse
+      extractedTextFile = await extractTextFromPdf(file.path);
+    } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      extractedTextFile = await extractTextFromDocx(file.path);
+    } else if (fileType === 'application/vnd.ms-excel' || fileType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      extractedTextFile = extractDataFromCsvOrExcel(file.path);
+    } else {
+      return res.status(400).send('Unsupported file type');
+    }
+
+    console.log('Extracted text:', extractedTextFile);
+
+    setTimeout(() => {
+      fs.unlink(file.path, (err) => {
+        if (err) console.error('Error deleting file:', err);
+      });
+    }, 10 * 60 * 1000);
+
+    res.json({ text: extractedTextFile });
+  } catch (error) {
+    console.error('Error processing file:', error);
+    res.status(500).send('Error processing file: ' + error.message);
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
-

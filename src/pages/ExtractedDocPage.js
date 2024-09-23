@@ -6,11 +6,11 @@ import { useAuth } from "../contexts/AuthContext";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
 
-function ExtractedTextRecipePage() {
+function ExtractedDocPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const extractedText = location.state?.extractedText;
+  const extractedTextFile = location.state?.extractedTextFile;
 
   const [recipe, setRecipe] = useState({
     title: "",
@@ -22,29 +22,32 @@ function ExtractedTextRecipePage() {
   const [imageFile, setImageFile] = useState(null);
 
   useEffect(() => {
-    if (extractedText) {
-      const parsedRecipe = parseExtractedText(extractedText);
+    if (extractedTextFile) {
+      const parsedRecipe = parseExtractedTextFile(extractedTextFile);
       setRecipe(parsedRecipe);
     }
-  }, [extractedText]);
+  }, [extractedTextFile]);
 
-  const parseExtractedText = (text) => {
+// ExtractedDocPage.js
+  const parseExtractedTextFile = (text) => {
     const lines = text.split('\n').filter(line => line.trim() !== '');
     const parsedRecipe = {
-      title: lines[0] || '',
+      title: lines[0] || 'Untitled Recipe',  // Use a fallback title
       ingredients: [],
       instructions: [],
       readyInMinutes: 0,
       servings: 1,
     };
 
-    let currentSection = 'ingredients';
+    let currentSection = 'ingredients';  // Start in the ingredients section
     for (let i = 1; i < lines.length; i++) {
-      if (lines[i].toLowerCase().includes('instructions') || lines[i].toLowerCase().includes('directions')) {
-        currentSection = 'instructions';
+      const line = lines[i].toLowerCase();
+      if (line.includes('instructions') || line.includes('directions')) {
+        currentSection = 'instructions'; // Switch to instructions
         continue;
       }
-      parsedRecipe[currentSection].push(lines[i]);
+
+      parsedRecipe[currentSection].push(lines[i]);  // Add the line to the correct section
     }
 
     return parsedRecipe;
@@ -274,4 +277,4 @@ function ExtractedTextRecipePage() {
   );
 }
 
-export default ExtractedTextRecipePage;
+export default ExtractedDocPage;

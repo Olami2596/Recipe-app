@@ -21,7 +21,7 @@ function TakeRecipePicturePage() {
         name: newImage.name,
         type: newImage.type,
         size: newImage.size,
-        lastModified: newImage.lastModified
+        lastModified: newImage.lastModified,
       }));
       setError(null);
     }
@@ -67,16 +67,43 @@ function TakeRecipePicturePage() {
   };
 
   return (
-    <div>
-      <h1>Take Recipe Picture</h1>
-      <input type="file" onChange={handleImageChange} accept="image/*" capture="camera" />
-      <button onClick={handleUpload} disabled={!image}>Upload and Extract Text</button>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold text-olive-800 text-center mb-6">Take Recipe Picture</h1>
+
+      <div className="mb-6 flex flex-col items-center">
+        <input
+          type="file"
+          onChange={handleImageChange}
+          accept="image/*"
+          capture="camera"
+          className="mb-4 w-full border border-olive-300 p-2 rounded focus:ring-2 focus:ring-olive-600"
+        />
+        <button
+          onClick={handleUpload}
+          disabled={!image}
+          className={`${
+            image ? 'bg-olive-800 hover:bg-olive-600' : 'bg-gray-300 cursor-not-allowed'
+          } text-white px-6 py-2 rounded transition-all duration-300 ease-in-out`}
+        >
+          Upload and Extract Text
+        </button>
+        {error && <p className="mt-4 text-red-600">{error}</p>}
+      </div>
+
       {extractedText && (
-        <div>
-          <h2>Extracted Text:</h2>
-          <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>{extractedText}</pre>
-          <button onClick={handleSaveRecipe}>Edit and Save Recipe</button>
+        <div className="mt-8">
+          <h2 className="text-2xl font-semibold text-olive-800 mb-4">Extracted Text:</h2>
+          <pre className="bg-gray-100 p-4 rounded shadow-md whitespace-pre-wrap break-words text-olive-700 mb-6">
+            {extractedText}
+          </pre>
+          <div className="flex justify-center">
+            <button
+              onClick={handleSaveRecipe}
+              className="bg-olive-800 text-white px-6 py-2 rounded hover:bg-olive-600 transition-all duration-300 ease-in-out"
+            >
+              Edit and Save Recipe
+            </button>
+          </div>
         </div>
       )}
     </div>

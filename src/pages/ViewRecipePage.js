@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
-import { getRecipeDetails } from '../services/recipeService'; // Import this function from your recipeService
+import { getRecipeDetails } from '../services/recipeService';
 
 function ViewRecipePage() {
   const [recipe, setRecipe] = useState(null);
@@ -19,15 +19,13 @@ function ViewRecipePage() {
       setLoading(true);
       setError(null);
       try {
-        // First, try to fetch from Firestore
         const docRef = doc(db, 'recipes', id);
         const docSnap = await getDoc(docRef);
-        
+
         if (docSnap.exists() && docSnap.data().userId === user.uid) {
           setRecipe({ id: docSnap.id, ...docSnap.data() });
           setIsSaved(true);
         } else {
-          // If not in Firestore, fetch from Spoonacular API
           const apiRecipe = await getRecipeDetails(id);
           setRecipe(apiRecipe);
           setIsSaved(false);
@@ -53,7 +51,7 @@ function ViewRecipePage() {
         readyInMinutes: recipe.readyInMinutes,
         servings: recipe.servings,
         userId: user.uid,
-        createdAt: new Date()
+        createdAt: new Date(),
       };
 
       await setDoc(doc(db, 'recipes', id), recipeToSave);
@@ -65,53 +63,74 @@ function ViewRecipePage() {
     }
   };
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>{error}</p>;
-  if (!recipe) return <p>No recipe found.</p>;
+  if (loading) return <p className="text-center text-olive-600">Loading...</p>;
+  if (error) return <p className="text-center text-red-600">{error}</p>;
+  if (!recipe) return <p className="text-center text-olive-600">No recipe found.</p>;
 
   return (
-    <div>
-      <h1>{recipe.title}</h1>
-      {recipe.image && <img src={recipe.image} alt={recipe.title} />}
-      
-      <h2>Ingredients:</h2>
-      <ul>
-        {recipe.extendedIngredients ? (
-          recipe.extendedIngredients.map((ingredient, index) => (
-            <li key={index}>{ingredient.original}</li>
-          ))
-        ) : (
-          recipe.ingredients.map((ingredient, index) => (
-            <li key={index}>{ingredient}</li>
-          ))
+    <div className="container mx-auto p-4">
+      <h1 className="text-4xl font-bold text-olive-800 text-center mb-6">{recipe.title}</h1>
+
+      {recipe.image && (
+        <div className="flex justify-center mb-6">
+          <img src={recipe.image} alt={recipe.title} className="rounded-md shadow-md max-w-full h-auto" />
+        </div>
+      )}
+
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold text-olive-700 mb-4">Ingredients</h2>
+        <ul className="list-disc list-inside space-y-2 text-olive-800">
+          {recipe.extendedIngredients
+            ? recipe.extendedIngredients.map((ingredient, index) => (
+                <li key={index} className="border-b border-olive-200 pb-2">{ingredient.original}</li>
+              ))
+            : recipe.ingredients.map((ingredient, index) => (
+                <li key={index} className="border-b border-olive-200 pb-2">{ingredient}</li>
+              ))}
+        </ul>
+      </div>
+
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold text-olive-700 mb-4">Instructions</h2>
+        <ol className="list-decimal list-inside space-y-3 text-olive-800">
+          {recipe.analyzedInstructions
+            ? recipe.analyzedInstructions[0].steps.map((step, index) => (
+                <li key={index} className="border-b border-olive-200 pb-2">{step.step}</li>
+              ))
+            : recipe.instructions.map((instruction, index) => (
+                <li key={index} className="border-b border-olive-200 pb-2">{instruction}</li>
+              ))}
+        </ol>
+      </div>
+
+      <div className="text-olive-700 mb-6">
+        <p className="mb-2">
+          <strong>Ready in:</strong> {recipe.readyInMinutes} minutes
+        </p>
+        <p>
+          <strong>Servings:</strong> {recipe.servings}
+        </p>
+      </div>
+
+      <div className="flex justify-center space-x-4">
+        {!isSaved && (
+          <button
+            onClick={handleSaveRecipe}
+            className="bg-olive-800 text-olive-100 px-6 py-2 rounded hover:bg-olive-600 transition-all duration-300 ease-in-out"
+          >
+            Save Recipe
+          </button>
         )}
-      </ul>
 
-      <h2>Instructions:</h2>
-      {recipe.analyzedInstructions ? (
-        <ol>
-          {recipe.analyzedInstructions[0].steps.map((step, index) => (
-            <li key={index}>{step.step}</li>
-          ))}
-        </ol>
-      ) : (
-        <ol>
-          {recipe.instructions.map((instruction, index) => (
-            <li key={index}>{instruction}</li>
-          ))}
-        </ol>
-      )}
-
-      <p>Ready in {recipe.readyInMinutes} minutes</p>
-      <p>Servings: {recipe.servings}</p>
-
-      {!isSaved && (
-        <button onClick={handleSaveRecipe}>Save Recipe</button>
-      )}
-
-      {isSaved && recipe.userId === user.uid && (
-        <button onClick={() => navigate(`/edit/${recipe.id}`)}>Edit Recipe</button>
-      )}
+        {isSaved && recipe.userId === user.uid && (
+          <button
+            onClick={() => navigate(`/edit/${recipe.id}`)}
+            className="bg-olive-800 text-olive-100 px-6 py-2 rounded hover:bg-olive-600 transition-all duration-300 ease-in-out"
+          >
+            Edit Recipe
+          </button>
+        )}
+      </div>
     </div>
   );
 }

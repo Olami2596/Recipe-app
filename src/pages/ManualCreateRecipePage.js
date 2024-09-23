@@ -1,52 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { db } from '../firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { useAuth } from '../contexts/AuthContext';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../firebase';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { db, storage } from "../firebase";
+import { collection, addDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
 
-function EditRecipePage() {
-  const { id } = useParams();
+function ManualCreateRecipePage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [recipe, setRecipe] = useState({
-    title: '',
-    image: '',
-    ingredients: [''],
-    instructions: [''],
+    title: "",
+    ingredients: [""],
+    instructions: [""],
     readyInMinutes: 0,
     servings: 1,
   });
   const [imageFile, setImageFile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const { user } = useAuth();
-
-  useEffect(() => {
-    const fetchRecipe = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const docRef = doc(db, 'recipes', id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists() && docSnap.data().userId === user.uid) {
-          setRecipe(docSnap.data());
-        } else {
-          setError('Recipe not found or you do not have permission to edit it.');
-          navigate('/saved-recipes');
-        }
-      } catch (error) {
-        console.error('Error fetching recipe:', error);
-        setError('Failed to fetch recipe. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRecipe();
-  }, [id, navigate, user.uid]);
+  const [imageUrl, setImageUrl] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -54,6 +25,12 @@ function EditRecipePage() {
       ...prevRecipe,
       [name]: value,
     }));
+  };
+
+  const handleImageChange = (e) => {
+    if (e.target.files[0]) {
+      setImageFile(e.target.files[0]);
+    }
   };
 
   const handleIngredientChange = (index, value) => {
@@ -75,21 +52,15 @@ function EditRecipePage() {
   const addIngredient = () => {
     setRecipe((prevRecipe) => ({
       ...prevRecipe,
-      ingredients: [...prevRecipe.ingredients, ''],
+      ingredients: [...prevRecipe.ingredients, ""],
     }));
   };
 
   const addInstruction = () => {
     setRecipe((prevRecipe) => ({
       ...prevRecipe,
-      instructions: [...prevRecipe.instructions, ''],
+      instructions: [...prevRecipe.instructions, ""],
     }));
-  };
-
-  const handleImageChange = (e) => {
-    if (e.target.files[0]) {
-      setImageFile(e.target.files[0]);
-    }
   };
 
   const handleImageUpload = async () => {
@@ -98,26 +69,39 @@ function EditRecipePage() {
       try {
         const snapshot = await uploadBytes(imageRef, imageFile);
         const url = await getDownloadURL(snapshot.ref);
+        setImageUrl(url);
         return url;
       } catch (error) {
         console.error("Error uploading image: ", error);
-        setError(`Failed to upload image. Error: ${error.message}`);
+        alert(`Failed to upload image. Error: ${error.message}`);
         return null;
       }
     }
-    return recipe.image;
+    return null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const imageUrl = await handleImageUpload();
-      const docRef = doc(db, 'recipes', id);
-      await updateDoc(docRef, { ...recipe, image: imageUrl });
-      navigate('/saved-recipes');
+      let imageUrl = null;
+      if (imageFile) {
+        imageUrl = await handleImageUpload();
+      }
+      
+      await addDoc(collection(db, "recipes"), {
+        ...recipe,
+        image: imageUrl,
+        userId: user.uid,
+        createdAt: new Date(),
+      });
+
+      // Clear the extracted text from localStorage
+      localStorage.removeItem('extractedText');
+      
+      navigate("/saved-recipes");
     } catch (error) {
-      console.error('Error updating document: ', error);
-      setError('Failed to update recipe. Please try again.');
+      console.error("Error adding document: ", error);
+      alert(`Failed to create recipe. Error: ${error.message}`);
     }
   };
 
@@ -135,52 +119,50 @@ function EditRecipePage() {
     }));
   };
 
-  if (loading) return <p className="text-center text-olive-600">Loading...</p>;
-  if (error) return <p className="text-center text-red-600">{error}</p>;
-
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold text-olive-800 text-center mb-6">Edit Recipe</h1>
+      <h1 className="text-3xl font-bold text-olive-800 text-center mb-6">Create New Recipe Manually</h1>
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Title Field */}
         <div>
           <label htmlFor="title" className="block text-olive-700 font-medium mb-2">Title:</label>
           <input
             type="text"
             id="title"
             name="title"
-            value={recipe.title || ''}
+            value={recipe.title}
             onChange={handleChange}
             className="w-full border border-olive-300 p-2 rounded focus:ring-2 focus:ring-olive-600"
             required
           />
         </div>
+
+        {/* Image Upload */}
         <div>
-          <label htmlFor="image" className="block text-olive-700 font-medium mb-2">Image:</label>
-          {recipe.image && (
-            <div className="mb-4">
-              <img
-                src={recipe.image}
-                alt="Recipe"
-                className="w-48 h-48 object-cover rounded mb-2 shadow-md"
-              />
-            </div>
-          )}
+          <label htmlFor="image" className="block text-olive-700 font-medium mb-2">Upload Image:</label>
           <input
             type="file"
             id="image"
             name="image"
-            onChange={handleImageChange}
             accept="image/*"
+            onChange={handleImageChange}
             className="w-full border border-olive-300 p-2 rounded focus:ring-2 focus:ring-olive-600"
           />
+          {imageUrl && (
+            <div className="mt-4">
+              <img src={imageUrl} alt="Uploaded recipe" className="w-48 h-48 object-cover rounded shadow-md" />
+            </div>
+          )}
         </div>
+
+        {/* Ingredients Field */}
         <div>
           <label className="block text-olive-700 font-medium mb-2">Ingredients:</label>
           {recipe.ingredients.map((ingredient, index) => (
             <div key={index} className="flex space-x-2 mb-2">
               <input
                 type="text"
-                value={ingredient || ''}
+                value={ingredient}
                 onChange={(e) => handleIngredientChange(index, e.target.value)}
                 className="w-full border border-olive-300 p-2 rounded focus:ring-2 focus:ring-olive-600"
                 required
@@ -202,12 +184,14 @@ function EditRecipePage() {
             Add Ingredient
           </button>
         </div>
+
+        {/* Instructions Field */}
         <div>
           <label className="block text-olive-700 font-medium mb-2">Instructions:</label>
           {recipe.instructions.map((instruction, index) => (
             <div key={index} className="flex space-x-2 mb-2">
               <textarea
-                value={instruction || ''}
+                value={instruction}
                 onChange={(e) => handleInstructionChange(index, e.target.value)}
                 className="w-full border border-olive-300 p-2 rounded focus:ring-2 focus:ring-olive-600"
                 required
@@ -229,6 +213,8 @@ function EditRecipePage() {
             Add Instruction
           </button>
         </div>
+
+        {/* Ready in Minutes */}
         <div>
           <label htmlFor="readyInMinutes" className="block text-olive-700 font-medium mb-2">
             Ready in (minutes):
@@ -237,33 +223,37 @@ function EditRecipePage() {
             type="number"
             id="readyInMinutes"
             name="readyInMinutes"
-            value={recipe.readyInMinutes || 0}
+            value={recipe.readyInMinutes}
             onChange={handleChange}
             className="w-full border border-olive-300 p-2 rounded focus:ring-2 focus:ring-olive-600"
             required
           />
         </div>
+
+        {/* Servings */}
         <div>
           <label htmlFor="servings" className="block text-olive-700 font-medium mb-2">Servings:</label>
           <input
             type="number"
             id="servings"
             name="servings"
-            value={recipe.servings || 1}
+            value={recipe.servings}
             onChange={handleChange}
             className="w-full border border-olive-300 p-2 rounded focus:ring-2 focus:ring-olive-600"
             required
           />
         </div>
+
+        {/* Submit Button */}
         <button
           type="submit"
           className="bg-olive-800 text-white px-6 py-2 rounded hover:bg-olive-600 transition-all duration-300 ease-in-out"
         >
-          Update Recipe
+          Create Recipe
         </button>
       </form>
     </div>
   );
 }
 
-export default EditRecipePage;
+export default ManualCreateRecipePage;

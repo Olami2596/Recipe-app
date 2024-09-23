@@ -1,6 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
+.gitignore
+cors.json
 # dependencies
+/server/node_modules
 /node_modules
 /.pnp
 .pnp.js
@@ -33,3 +35,22 @@ firebase-debug.log
 
 # Optional: if you're using TypeScript
 *.tsbuildinfo
+credentials.json
+**/recipe-app-56ff6-85b597ce82f9.json
+
+# Server uploads
+/server/uploads/
+
+# Package lock files (optional, but recommended to include)
+package-lock.json
+/server/package-lock.json
+
+# Firebase configuration
+.firebaserc
+
+# Logs
+*.log
+
+firebase.json
+firebase.indexes.json
+firebase.rules

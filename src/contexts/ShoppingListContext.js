@@ -1,18 +1,27 @@
-import React, { createContext, useState, useContext, useCallback } from 'react';
+import React, { createContext, useContext, useCallback } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { useAuth } from './AuthContext';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import {
+  setIngredientsList,
+  setShoppingList,
+  setFavoriteList,
+  setSelectedRecipes,
+} from '../store/shoppingListSlice';
 
 const ShoppingListContext = createContext();
-
 export const useShoppingList = () => useContext(ShoppingListContext);
 
 export const ShoppingListProvider = ({ children }) => {
-  const [selectedRecipes, setSelectedRecipes] = useState([]);
-  const [ingredientsList, setIngredientsList] = useState([]);
-  const [shoppingList, setShoppingList] = useState([]);
-  const [favoriteList, setFavoriteList] = useState([]);
+  const dispatch = useDispatch();
   const { user } = useAuth();
+  const {
+    ingredientsList = [],
+    shoppingList = [],
+    favoriteList = [],
+    selectedRecipes = [],
+  } = useSelector((state) => state.shoppingList);
 
   const fetchLists = useCallback(async () => {
     if (user) {
@@ -21,16 +30,16 @@ export const ShoppingListProvider = ({ children }) => {
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          if (data.selectedRecipes) setSelectedRecipes(data.selectedRecipes);
-          if (data.ingredientsList) setIngredientsList(data.ingredientsList);
-          if (data.shoppingList) setShoppingList(data.shoppingList);
-          if (data.favoriteList) setFavoriteList(data.favoriteList);
+          dispatch(setSelectedRecipes(data.selectedRecipes || []));
+          dispatch(setIngredientsList(data.ingredientsList || []));
+          dispatch(setShoppingList(data.shoppingList || []));
+          dispatch(setFavoriteList(data.favoriteList || []));
         }
       } catch (error) {
         console.error("Error fetching lists:", error);
       }
     }
-  }, [user]);
+  }, [user, dispatch]);
 
   const updateLists = useCallback(async () => {
     if (user) {
@@ -40,7 +49,7 @@ export const ShoppingListProvider = ({ children }) => {
           selectedRecipes,
           ingredientsList,
           shoppingList,
-          favoriteList
+          favoriteList,
         });
       } catch (error) {
         console.error("Error updating lists:", error);
@@ -50,15 +59,15 @@ export const ShoppingListProvider = ({ children }) => {
 
   const value = {
     selectedRecipes,
-    setSelectedRecipes,
+    setSelectedRecipes: (recipes) => dispatch(setSelectedRecipes(recipes)),
     ingredientsList,
-    setIngredientsList,
+    setIngredientsList: (ingredients) => dispatch(setIngredientsList(ingredients)),
     shoppingList,
-    setShoppingList,
+    setShoppingList: (list) => dispatch(setShoppingList(list)),
     favoriteList,
-    setFavoriteList,
+    setFavoriteList: (list) => dispatch(setFavoriteList(list)),
     fetchLists,
-    updateLists
+    updateLists,
   };
 
   return (

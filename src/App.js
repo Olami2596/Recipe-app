@@ -56,7 +56,7 @@ function AppContent() {
         <SearchProvider>
           <Router>
             <ShoppingListProvider>
-              <div className="App bg-olive-500">
+              <div className="App bg-olive-500 h-screen">
               <Navbar user={user} handleLogout={handleLogout}/>
 
                 <Routes>

@@ -56,7 +56,7 @@ const Navbar = ({ user, handleLogout }) => {
               Create Recipe
             </button>
             <div
-              className={`absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-olive-700 ring-1 ring-black ring-opacity-5 transition-all duration-300 ease-in-out ${
+              className={`absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-olive-700 ring-1 ring-black ring-opacity-5 transition-all duration-300 ease-in-out z-50 ${
                 isDropdownOpen ? "opacity-100 visible" : "opacity-0 invisible"
               } group-hover:opacity-100 group-hover:visible lg:opacity-0 lg:invisible lg:group-hover:opacity-100 lg:group-hover:visible`}
             >

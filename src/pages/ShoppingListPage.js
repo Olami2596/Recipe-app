@@ -74,14 +74,12 @@ function ShoppingListPage() {
   };
 
   const addToShoppingList = (ingredient) => {
-    // Create a copy of the shopping list
     const newShoppingList = shoppingList.map(item => ({ ...item }));
   
     const existingItem = newShoppingList.find(
       (item) => item.name.toLowerCase() === ingredient.name.toLowerCase()
     );
     
-    // If the item already exists, create a new object with an updated count
     if (existingItem) {
       const updatedItem = {
         ...existingItem,
@@ -92,8 +90,12 @@ function ShoppingListPage() {
       );
       dispatch(setShoppingList(updatedShoppingList));
     } else {
-      // If the item doesn't exist, add it to the list with a count of 1
-      const updatedShoppingList = [...newShoppingList, { ...ingredient, count: 1 }];
+      const newItem = { 
+        name: ingredient.name, 
+        count: 1,
+        ...(ingredient.recipeId && { recipeId: ingredient.recipeId })
+      };
+      const updatedShoppingList = [...newShoppingList, newItem];
       dispatch(setShoppingList(updatedShoppingList));
     }
   };
@@ -386,33 +388,27 @@ function ShoppingListPage() {
           Clear Favorite List
         </button>
         <ul className="space-y-2">
-          {ingredientsList.map((ingredient, index) => (
+          {favoriteList.map((item, index) => (
             <li
               key={index}
               className="flex justify-between items-center space-x-4"
             >
-              {/* Ingredient name */}
-              <span className="text-olive-700">{ingredient.name}</span>
+              {/* Item name */}
+              <span className="text-olive-700">{item}</span>
 
               {/* Buttons */}
               <div className="flex space-x-2 sm:space-x-1">
                 <button
-                  onClick={() => addToShoppingList(ingredient)}
+                  onClick={() => addToShoppingList({ name: item })}
                   className="bg-olive-800 text-white px-3 py-1 rounded hover:bg-olive-600 sm:px-2 sm:py-1 text-sm"
                 >
                   Add to Shopping List
                 </button>
                 <button
-                  onClick={() => toggleFavorite(ingredient.name)}
-                  className={`px-3 py-1 rounded sm:px-2 sm:py-1 text-sm ${
-                    favoriteList.includes(ingredient.name)
-                      ? "bg-yellow-400 hover:bg-yellow-500"
-                      : "bg-gray-300 hover:bg-gray-400"
-                  }`}
+                  onClick={() => toggleFavorite(item)}
+                  className="bg-yellow-400 hover:bg-yellow-500 px-3 py-1 rounded sm:px-2 sm:py-1 text-sm"
                 >
-                  {favoriteList.includes(ingredient.name)
-                    ? "Unfavorite"
-                    : "Favorite"}
+                  Unfavorite
                 </button>
               </div>
             </li>

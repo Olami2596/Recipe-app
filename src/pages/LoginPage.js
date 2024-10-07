@@ -1,71 +1,119 @@
-// LoginPage.js
 import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext'; // Import the AuthContext to check user state
+import { useAuth } from '../contexts/AuthContext';
 
-function LoginPage() {
+function LoginPage({ logoutOccurred }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLogin, setIsLogin] = useState(true);
-  const { user } = useAuth(); // Get the user from AuthContext
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Effect to clear the fields after logout
   useEffect(() => {
-    if (!user) {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
+    // Clear fields when component mounts or when switching between login and register
+    setEmail('');
+    setPassword('');
+    setError('');
+  }, [isRegistering]);
+
+  useEffect(() => {
+    // Clear fields when logout occurs
+    if (logoutOccurred) {
       setEmail('');
       setPassword('');
+      setError('');
     }
-  }, [user]);
+  }, [logoutOccurred]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+
     try {
-      if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+      if (isRegistering) {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await sendEmailVerification(userCredential.user);
+        alert('Registration successful. Please check your email to verify your account.');
+        // Clear fields after successful registration
+        setEmail('');
+        setPassword('');
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, email, password);
+        // Clear fields after successful login
+        setEmail('');
+        setPassword('');
       }
-      navigate('/saved-recipes');
     } catch (error) {
-      console.error('Authentication error:', error);
-      alert(error.message);
+      setError(error.message);
     }
   };
 
   return (
-    <div className="min-h-screen bg-olive-100 flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-olive-50">
       <div className="bg-white p-8 rounded-lg shadow-md w-96">
-        <h1 className="text-2xl font-bold mb-6 text-olive-800">{isLogin ? 'Login' : 'Sign Up'}</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            required
-            className="w-full p-2 border border-olive-300 rounded focus:outline-none focus:ring-2 focus:ring-olive-500"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            required
-            className="w-full p-2 border border-olive-300 rounded focus:outline-none focus:ring-2 focus:ring-olive-500"
-          />
-          <button type="submit" className="w-full bg-olive-600 text-white py-2 rounded hover:bg-olive-700 transition duration-300">
-            {isLogin ? 'Login' : 'Sign Up'}
+        <h2 className="text-2xl font-bold mb-4 text-olive-800">
+          {isRegistering ? 'Register' : 'Login'}
+        </h2>
+        {error && <p className="text-red-500 mb-4">{error}</p>}
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label htmlFor="email" className="block text-olive-700 font-medium mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full border border-olive-300 p-2 rounded"
+              required
+            />
+          </div>
+          <div className="mb-6">
+            <label htmlFor="password" className="block text-olive-700 font-medium mb-2">
+              Password
+            </label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full border border-olive-300 p-2 rounded"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-olive-800 text-white py-2 px-4 rounded hover:bg-olive-600"
+          >
+            {isRegistering ? 'Register' : 'Login'}
           </button>
         </form>
-        <button 
-          onClick={() => setIsLogin(!isLogin)} 
-          className="mt-4 text-olive-600 hover:text-olive-800"
-        >
-          {isLogin ? 'Need to create an account?' : 'Already have an account?'}
-        </button>
+        <p className="mt-4 text-center">
+          <button
+            onClick={() => setIsRegistering(!isRegistering)}
+            className="text-olive-800 hover:underline"
+          >
+            {isRegistering ? 'Already have an account? Login' : "Don't have an account? Register"}
+          </button>
+        </p>
+        <p className="mt-2 text-center">
+          <button
+            onClick={() => navigate('/forgot-password')}
+            className="text-olive-800 hover:underline"
+          >
+            Forgot Password?
+          </button>
+        </p>
       </div>
     </div>
   );

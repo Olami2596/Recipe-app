@@ -3,9 +3,9 @@ import {
   BrowserRouter as Router,
   Route,
   Routes,
-  Navigate,
-  Link,
+  Navigate
 } from "react-router-dom";
+import { useState,  } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import HomePage from "./pages/HomePage";
 import ViewRecipePage from "./pages/ViewRecipePage";
@@ -18,6 +18,7 @@ import TakeRecipePicturePage from "./pages/TakeRecipePicturePage";
 import ExtractedTextRecipePage from "./pages/ExtractedTextRecipePage";
 import DocUploadPage from "./pages/DocUploadPage";
 import LoginPage from "./pages/LoginPage";
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import "./App.css";
 import { SearchProvider } from "./contexts/SearchContext";
 import { ShoppingListProvider } from "./contexts/ShoppingListContext";
@@ -26,6 +27,8 @@ import { PersistGate } from "redux-persist/integration/react";
 import { store, persistor } from "./store/store";
 import Navbar from "./components/Navbar";
 import ExtractedDocPage from "./pages/ExtractedDocPage";
+import { signOut } from 'firebase/auth';
+import { auth } from './firebase';
 
 function PrivateRoute({ children }) {
   const { user } = useAuth();
@@ -33,13 +36,17 @@ function PrivateRoute({ children }) {
 }
 
 function AppContent() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+
+  const [logoutOccurred, setLogoutOccurred] = useState(false);
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await signOut(auth);
+      setLogoutOccurred(true);
+      Navigate('/login');
     } catch (error) {
-      console.error("Failed to log out", error);
+      console.error('Error signing out:', error);
     }
   };
 
@@ -53,7 +60,7 @@ function AppContent() {
               <Navbar user={user} handleLogout={handleLogout}/>
 
                 <Routes>
-                  <Route path="/login" element={<LoginPage />} />
+                <Route path="/login" element={<LoginPage logoutOccurred={logoutOccurred} />} />
                   <Route
                     path="/saved-recipes"
                     element={
@@ -62,6 +69,7 @@ function AppContent() {
                       </PrivateRoute>
                     }
                   />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route
                     path="/discover"
                     element={

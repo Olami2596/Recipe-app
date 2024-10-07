@@ -37,8 +37,10 @@ function UploadRecipePage() {
     const formData = new FormData();
     formData.append('file', file);
 
+    // https://recipe-app-56ff6.cloudfunctions.net/api/extract-recipe
+
     try {
-      const response = await axios.post('http://localhost:5000/api/extract-recipe', formData, { 
+      const response = await axios.post('https://recipe-app-56ff6.cloudfunctions.net/api/extract-recipe', formData, { 
         headers: {
           'Content-Type': 'multipart/form-data',
         },

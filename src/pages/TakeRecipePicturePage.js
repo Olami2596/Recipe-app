@@ -37,7 +37,7 @@ function TakeRecipePicturePage() {
     formData.append('image', image);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/extract-text', formData, {
+      const response = await axios.post('https://recipe-app-56ff6.cloudfunctions.net/api/extract-text', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
